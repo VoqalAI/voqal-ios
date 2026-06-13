@@ -19,7 +19,10 @@ final class VoqalSentrySink: VoqalLogSink {
     private let lock = NSLock()
 
     func record(_ event: VoqalLogEvent) {
-        applyContext(event.metadata)
+        if let userId = VoqalDiagnosticsContext.shared.userId {
+            let user = User(); user.userId = userId
+            SentrySDK.setUser(user)
+        }
         if let frame = event.trace {
             handleTrace(frame, metadata: event.metadata)
             return
@@ -32,20 +35,15 @@ final class VoqalSentrySink: VoqalLogSink {
         }
     }
 
-    // MARK: - Context
-
-    /// Push the ambient identity onto Sentry's scope so every event is tagged with
-    /// who/which-tenant/which-environment without each call site repeating it.
-    private func applyContext(_ metadata: [String: String]) {
-        SentrySDK.configureScope { scope in
-            if let userId = VoqalDiagnosticsContext.shared.userId {
-                let user = User(); user.userId = userId; scope.setUser(user)
-            }
-            for key in ["environment", "tenant", "session_id", "sdk_version",
-                        "device_model", "os_version", "locale"] {
-                if let value = metadata[key] { scope.setTag(value: value, key: key) }
-            }
+    /// Tags lifted from the ambient context so events are searchable in Sentry by
+    /// who/tenant/environment/device.
+    private func tags(from metadata: [String: String]) -> [String: String] {
+        var out: [String: String] = [:]
+        for key in ["environment", "tenant", "session_id", "sdk_version",
+                    "device_model", "os_version", "locale"] {
+            if let value = metadata[key] { out[key] = value }
         }
+        return out
     }
 
     // MARK: - Breadcrumbs
@@ -70,18 +68,21 @@ final class VoqalSentrySink: VoqalLogSink {
             bc.message = crumb.message
             SentrySDK.addBreadcrumb(bc)
         }
-        let scopeBlock: (Scope) -> Void = { scope in
-            scope.setTag(value: event.category, key: "category")
-            for (key, value) in event.metadata { scope.setExtra(value: value, key: key) }
+        // Build the event explicitly (capture(event:) is public across the SPM and
+        // CocoaPods static variants; the scope-block capture overloads are not).
+        let sentryEvent = Event(level: .error)
+        sentryEvent.message = SentryMessage(formatted: event.message)
+        var eventTags = tags(from: event.metadata)
+        eventTags["category"] = event.category
+        sentryEvent.tags = eventTags
+        if let userId = VoqalDiagnosticsContext.shared.userId {
+            let user = User(); user.userId = userId
+            sentryEvent.user = user
         }
         if let error = event.error {
-            SentrySDK.capture(error: error, block: scopeBlock)
-        } else {
-            SentrySDK.capture(message: event.message) { scope in
-                scope.setLevel(.error)
-                scopeBlock(scope)
-            }
+            sentryEvent.error = error as NSError
         }
+        SentrySDK.capture(event: sentryEvent)
     }
 
     // MARK: - Tracing
