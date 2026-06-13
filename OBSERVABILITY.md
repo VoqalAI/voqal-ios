@@ -25,41 +25,43 @@ The core SDK has **no Sentry dependency**. Sentry lives in a separate SPM produc
 
 ---
 
-## 2. Add the package
+## 2. Add the package — that's the whole setup
 
-Same URL as the SDK; add the **`VoqalSentry`** library product alongside `VoqalSDK`:
+Add the SDK the same way you always have. There is **one product, `VoqalSDK`**, and
+it bundles the Sentry bridge. **No second product, no `enable()` call, no code
+changes.** The SDK auto-starts observability inside `setup()` using the baked DSN.
 
 ```
-https://github.com/VoqalAI/voqal-ios  →  add both products:
-  • VoqalSDK
-  • VoqalSentry
+https://github.com/VoqalAI/voqal-ios  →  add product:  VoqalSDK
 ```
-
-`VoqalSentry` transitively pulls in `sentry-cocoa`; no other setup.
-
----
-
-## 3. Turn it on (one line, at launch)
 
 ```swift
 import VoqalSDK
-import VoqalSentry
 
-// AppDelegate / App init — BEFORE VoqalSDKManager.setup:
-VoqalSentry.enable()                                  // uses the baked Voqal DSN
-
-// …or point at your own Sentry project / tune sampling:
-VoqalSentry.enable(options: .init(
-    dsn: "https://…ingest.sentry.io/…",
-    tracesSampleRate: 1.0,    // 1.0 = trace every flow; lower in high volume
-    scrubPII: true            // redact token/email/phone/URL-query (default on)
-))
-
-VoqalSDKManager.shared.setup(configuration: config)
+VoqalSDKManager.shared.setup(configuration: config)   // observability is now on
 ```
 
-To disable entirely: `VoqalSentry.enable(options: .init(enabled: false))` — or just
-don't add the product.
+That's it — errors, traces, breadcrumbs, and who/tenant/env/device context flow to
+Sentry automatically.
+
+---
+
+## 3. Optional overrides
+
+Only if you want to change the defaults (own Sentry project, sampling, or to turn
+it off):
+
+```swift
+var config = VoqalSDKConfiguration(requestId: "prod-myapp")
+config.apiKey = "pk_live_…"
+config.observability = .init(
+    dsn: "https://…ingest.sentry.io/…",  // omit → baked Voqal DSN
+    enabled: true,                        // set false to turn observability off
+    tracesSampleRate: 1.0,                // 1.0 = trace every flow; lower at scale
+    scrubPII: true                        // redact token/email/phone (default on)
+)
+VoqalSDKManager.shared.setup(configuration: config)
+```
 
 ---
 

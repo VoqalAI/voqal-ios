@@ -5,24 +5,23 @@ let package = Package(
     name: "VoqalSDK",
     platforms: [.iOS(.v16)],
     products: [
-        .library(name: "VoqalSDK", targets: ["VoqalSDK"]),
-        // Optional observability: forwards SDK errors/traces/breadcrumbs to Sentry.
-        // Add this product + call VoqalSentry.enable() to turn it on. See OBSERVABILITY.md.
-        .library(name: "VoqalSentry", targets: ["VoqalSentry"]),
+        // One product. Adding it links the SDK + the Sentry bridge, and the SDK
+        // auto-starts observability in setup() — no extra code. See OBSERVABILITY.md.
+        .library(name: "VoqalSDK", targets: ["VoqalSDKBinary", "VoqalSentry"]),
     ],
     dependencies: [
         .package(url: "https://github.com/getsentry/sentry-cocoa", from: "8.0.0"),
     ],
     targets: [
         .binaryTarget(
-            name: "VoqalSDK",
-            url: "https://voqal-sdk-releases-eu.s3.eu-west-1.amazonaws.com/VoqalSDK-1.1.0.zip",
-            checksum: "6d6e94de533a5334b03ed405b9289e6b0e5a36653126836e8eb6bb78f45da63d"
+            name: "VoqalSDKBinary",
+            url: "https://voqal-sdk-releases-eu.s3.eu-west-1.amazonaws.com/VoqalSDK-1.2.0.zip",
+            checksum: "1760272dc4983db3aede01b4a58d14135c37695c4368afd5ef7ea4cdcb9ee97b"
         ),
         .target(
             name: "VoqalSentry",
             dependencies: [
-                "VoqalSDK",
+                "VoqalSDKBinary",
                 .product(name: "Sentry", package: "sentry-cocoa"),
             ]
         ),

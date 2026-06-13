@@ -20,6 +20,10 @@ public enum VoqalSentry {
 
     /// Register the Sentry reporter so `VoqalSDKManager.setup` starts it
     /// automatically. Call once at launch. Idempotent.
+    ///
+    /// You normally DON'T need to call this — when this product is linked, the
+    /// SDK's `setup()` discovers the bridge via the ObjC runtime and registers it
+    /// for you (see `VoqalSentryAutoStart`). Call it only to pass explicit options.
     public static func enable(options: VoqalObservabilityOptions = .init()) {
         VoqalObservability.registerInstaller { resolved in
             start(resolved)
@@ -42,5 +46,17 @@ public enum VoqalSentry {
             }
         }
         VoqalLog.shared.addSink(VoqalSentrySink())
+    }
+}
+
+/// ObjC-discoverable entry point. The core SDK looks this class up by name at
+/// `setup()` time (no compile dependency) and calls `registerInstaller`, so
+/// observability is on by default whenever this product is linked.
+@objc(VoqalSentryAutoStart)
+public final class VoqalSentryAutoStart: NSObject {
+    @objc public static func registerInstaller() {
+        VoqalObservability.registerInstaller { resolved in
+            VoqalSentry.start(resolved)
+        }
     }
 }
