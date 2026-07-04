@@ -15,8 +15,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "VoqalSDKBinary",
-            url: "https://voqal-sdk-releases-eu.s3.eu-west-1.amazonaws.com/VoqalSDK-1.3.1.zip",
-            checksum: "3e2584ff14ade689b5a27c785298f7a79bfadf2b14485941f096a415c6f9eccd"
+            url: "https://voqal-sdk-releases-eu.s3.eu-west-1.amazonaws.com/VoqalSDK-1.3.2.zip",
+            checksum: "044f5fc0e3dc11d9acb08f7887662c9667c3854dc590e8e431e25a1ff644f5e6"
         ),
         .target(
             name: "VoqalSentry",
